@@ -66,7 +66,6 @@ def call_chatgpt(github_url, prompt_instruction):
     except:
         return "Error parsing repository URL!"
     
-    
     # things to be sent to ChatGPT
     sys_instruction = """
     You are a helpful coding assistant. 
@@ -76,17 +75,17 @@ def call_chatgpt(github_url, prompt_instruction):
     Please return a unified diff (as a string) representing the changes to be made
     """
     messages = [{"role": "system", "content": sys_instruction}]
-    
     for file_path, file_content in all_files_info:
         msg_content = f'File Path: {file_path}\nFile Content: {file_content}'
         messages.append({"role": "user", "content": msg_content})
-    
     final_instruction = "Remember please only return a unified diff (as a string) representing the changes to be made"
     messages.append({"role": "user", 
                      "content": prompt_instruction+final_instruction})
     
     endpoint = "https://api.openai.com/v1/chat/completions"
-    model="gpt-3.5-turbo-0125"
+    # The model to be used
+    model = "gpt-3.5-turbo-0125"
+    # model = "gpt-4-0125-preview"
     data = {
       "model": model,
       "messages": messages
@@ -95,10 +94,10 @@ def call_chatgpt(github_url, prompt_instruction):
         "Authorization": f"Bearer {api_key}"
     }
     
+    # First call and response
     response1 = requests.post(endpoint, json=data, headers=headers)
     if response1.status_code != 200:
         return "Error: " + response1.text
-    
     
     messages.append({"role": "assistant", 
                      "content": response1.json()["choices"][0]["message"]["content"]})
@@ -109,32 +108,18 @@ def call_chatgpt(github_url, prompt_instruction):
     messages.append({"role": "user", 
                      "content": reflection_instruction})
     
+    # Second call and response
     response2 = requests.post(endpoint, json=data, headers=headers)
     if response2.status_code == 200:
         return response2.json()["choices"][0]["message"]["content"]
     else:
         return "Error: " + response2.text
 
-
-
 app = FastAPI()
-
 class Item(BaseModel):
     repoUrl: str
     prompt: str
 
-@app.get("/")
-async def read_root():
-    return {"World": "Hello"}
-
 @app.post("/")
 async def create_item(item: Item):
-    # return {"repoUrl": item.repoUrl, "prompt": item.prompt}
     return {"response": call_chatgpt(item.repoUrl, item.prompt)}
-
-"""
-github_url = 'https://github.com/aceazycrdfz/YouTubeDownloaderGUI'
-prompt_instruction = "Please add some documentations"
-call_chatgpt(github_url, prompt_instruction)
-"""
-
