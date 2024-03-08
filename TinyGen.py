@@ -1,6 +1,8 @@
 from urllib.parse import urlparse
 import requests
 import base64
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 def extract_owner_repo(github_url):
     """
@@ -57,9 +59,13 @@ def call_chatgpt(github_url, prompt_instruction):
     :param prompt_instruction: The instruction.
     :return: A string, the response/error message.
     """
-    owner, repo = extract_owner_repo(github_url)
-    # a list of (file_path, file_content) tuples
-    all_files_info = fetch_file_contents(owner, repo)
+    try:
+        owner, repo = extract_owner_repo(github_url)
+        # a list of (file_path, file_content) tuples
+        all_files_info = fetch_file_contents(owner, repo)
+    except:
+        return "Error parsing repository URL!"
+    
     
     # things to be sent to ChatGPT
     sys_instruction = """
@@ -90,10 +96,8 @@ def call_chatgpt(github_url, prompt_instruction):
     }
     
     response1 = requests.post(endpoint, json=data, headers=headers)
-    if response1.status_code == 200:
-        print(response1.json()["choices"][0]["message"]["content"])
-    else:
-        print("Error:", response1.text)
+    if response1.status_code != 200:
+        return "Error: " + response1.text
     
     
     messages.append({"role": "assistant", 
@@ -107,13 +111,30 @@ def call_chatgpt(github_url, prompt_instruction):
     
     response2 = requests.post(endpoint, json=data, headers=headers)
     if response2.status_code == 200:
-        print(response2.json()["choices"][0]["message"]["content"])
+        return response2.json()["choices"][0]["message"]["content"]
     else:
-        print("Error:", response2.text)
+        return "Error: " + response2.text
 
 
+
+app = FastAPI()
+
+class Item(BaseModel):
+    repoUrl: str
+    prompt: str
+
+@app.get("/")
+async def read_root():
+    return {"World": "Hello"}
+
+@app.post("/")
+async def create_item(item: Item):
+    # return {"repoUrl": item.repoUrl, "prompt": item.prompt}
+    return {"response": call_chatgpt(item.repoUrl, item.prompt)}
+
+"""
 github_url = 'https://github.com/aceazycrdfz/YouTubeDownloaderGUI'
-prompt_instruction = "Please add relevant documentations"
-
-
+prompt_instruction = "Please add some documentations"
+call_chatgpt(github_url, prompt_instruction)
+"""
 
