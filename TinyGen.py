@@ -111,7 +111,7 @@ def call_chatgpt(github_url, prompt_instruction):
     # Second call and response
     response2 = requests.post(endpoint, json=data, headers=headers)
     if response2.status_code == 200:
-        return response2.json()["choices"][0]["message"]["content"]
+        return response2.json()["choices"][0]["message"]["content"].strip()
     else:
         return "Error: " + response2.text
 
@@ -122,4 +122,4 @@ class Item(BaseModel):
 
 @app.post("/")
 async def create_item(item: Item):
-    return {"response": call_chatgpt(item.repoUrl, item.prompt)}
+    return {"response": call_chatgpt(item.repoUrl, item.prompt)[3:-3]}
