@@ -44,6 +44,9 @@ def fetch_file_contents(owner, repo, path=''):
 
     return files_info
 
+# Read the API key from api_key.txt
+with open('api_key.txt', 'r') as file:
+    api_key = file.read().strip() # .strip() removes any leading/trailing whitespace
 
 github_url = 'https://github.com/aceazycrdfz/YouTubeDownloaderGUI'
 owner, repo = extract_owner_repo(github_url)
@@ -64,17 +67,38 @@ for file_path, file_content in all_files_info:
     msg_content = f'File Path: {file_path}\nFile Content: {file_content}'
     messages.append({"role": "user", "content": msg_content})
     
-prompt_instruction = "Please remove all the comments"
+prompt_instruction = "Please add relevant documentations"
 final_instruction = "Remember please only return a unified diff (as a string) representing the changes to be made"
 messages.append({"role": "user", 
                  "content": prompt_instruction+final_instruction})
+
+endpoint = "https://api.openai.com/v1/chat/completions"
 data = {
   "model": "gpt-3.5-turbo-0125",
   "messages": messages
 }
+headers = {
+    "Authorization": f"Bearer {api_key}"
+}
 
 response1 = requests.post(endpoint, json=data, headers=headers)
-if response.status_code == 200:
-    print(response.json()["choices"][0]["message"]["content"])
+if response1.status_code == 200:
+    print(response1.json()["choices"][0]["message"]["content"])
 else:
-    print("Error:", response.text)
+    print("Error:", response1.text)
+
+
+messages.append({"role": "assistant", 
+                 "content": response1.json()["choices"][0]["message"]["content"]})
+reflection_instruction = """
+Are you sure about your answer? Can you do better?
+If so please offer a better answer, otherwise repeat your previous response
+"""
+messages.append({"role": "user", 
+                 "content": reflection_instruction})
+
+response2 = requests.post(endpoint, json=data, headers=headers)
+if response2.status_code == 200:
+    print(response2.json()["choices"][0]["message"]["content"])
+else:
+    print("Error:", response2.text)
