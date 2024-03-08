@@ -48,57 +48,72 @@ def fetch_file_contents(owner, repo, path=''):
 with open('api_key.txt', 'r') as file:
     api_key = file.read().strip() # .strip() removes any leading/trailing whitespace
 
-github_url = 'https://github.com/aceazycrdfz/YouTubeDownloaderGUI'
-owner, repo = extract_owner_repo(github_url)
-# a list of (file_path, file_content) tuples
-all_files_info = fetch_file_contents(owner, repo)
+def call_chatgpt(github_url, prompt_instruction):
+    """
+    Asks ChatGPT for help with the public github repo 
+    and returns the response as unified diff.
 
-# things to be sent to ChatGPT
-sys_instruction = """
-You are a helpful coding assistant. 
-You will be given all the files from a github repository. 
-The file names/paths will be given one by one. 
-At the end there will be an instruction. Please follow the intruction to modify the code. 
-Please return a unified diff (as a string) representing the changes to be made
-"""
-messages = [{"role": "system", "content": sys_instruction}]
-
-for file_path, file_content in all_files_info:
-    msg_content = f'File Path: {file_path}\nFile Content: {file_content}'
-    messages.append({"role": "user", "content": msg_content})
+    :param github_url: The URL of the repository.
+    :param prompt_instruction: The instruction.
+    :return: A string, the response/error message.
+    """
+    owner, repo = extract_owner_repo(github_url)
+    # a list of (file_path, file_content) tuples
+    all_files_info = fetch_file_contents(owner, repo)
     
+    # things to be sent to ChatGPT
+    sys_instruction = """
+    You are a helpful coding assistant. 
+    You will be given all the files from a github repository. 
+    The file names/paths will be given one by one. 
+    At the end there will be an instruction. Please follow the intruction to modify the code. 
+    Please return a unified diff (as a string) representing the changes to be made
+    """
+    messages = [{"role": "system", "content": sys_instruction}]
+    
+    for file_path, file_content in all_files_info:
+        msg_content = f'File Path: {file_path}\nFile Content: {file_content}'
+        messages.append({"role": "user", "content": msg_content})
+    
+    final_instruction = "Remember please only return a unified diff (as a string) representing the changes to be made"
+    messages.append({"role": "user", 
+                     "content": prompt_instruction+final_instruction})
+    
+    endpoint = "https://api.openai.com/v1/chat/completions"
+    model="gpt-3.5-turbo-0125"
+    data = {
+      "model": model,
+      "messages": messages
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+    
+    response1 = requests.post(endpoint, json=data, headers=headers)
+    if response1.status_code == 200:
+        print(response1.json()["choices"][0]["message"]["content"])
+    else:
+        print("Error:", response1.text)
+    
+    
+    messages.append({"role": "assistant", 
+                     "content": response1.json()["choices"][0]["message"]["content"]})
+    reflection_instruction = """
+    Are you sure about your answer? Can you do better?
+    If so please offer a better answer, otherwise repeat your previous response
+    """
+    messages.append({"role": "user", 
+                     "content": reflection_instruction})
+    
+    response2 = requests.post(endpoint, json=data, headers=headers)
+    if response2.status_code == 200:
+        print(response2.json()["choices"][0]["message"]["content"])
+    else:
+        print("Error:", response2.text)
+
+
+github_url = 'https://github.com/aceazycrdfz/YouTubeDownloaderGUI'
 prompt_instruction = "Please add relevant documentations"
-final_instruction = "Remember please only return a unified diff (as a string) representing the changes to be made"
-messages.append({"role": "user", 
-                 "content": prompt_instruction+final_instruction})
-
-endpoint = "https://api.openai.com/v1/chat/completions"
-data = {
-  "model": "gpt-3.5-turbo-0125",
-  "messages": messages
-}
-headers = {
-    "Authorization": f"Bearer {api_key}"
-}
-
-response1 = requests.post(endpoint, json=data, headers=headers)
-if response1.status_code == 200:
-    print(response1.json()["choices"][0]["message"]["content"])
-else:
-    print("Error:", response1.text)
 
 
-messages.append({"role": "assistant", 
-                 "content": response1.json()["choices"][0]["message"]["content"]})
-reflection_instruction = """
-Are you sure about your answer? Can you do better?
-If so please offer a better answer, otherwise repeat your previous response
-"""
-messages.append({"role": "user", 
-                 "content": reflection_instruction})
 
-response2 = requests.post(endpoint, json=data, headers=headers)
-if response2.status_code == 200:
-    print(response2.json()["choices"][0]["message"]["content"])
-else:
-    print("Error:", response2.text)
