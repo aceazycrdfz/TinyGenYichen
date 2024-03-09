@@ -1,6 +1,6 @@
 # Introduction
 
-TinyGen is a simple coding assistant FastAPI API. After taking in a URL of a public repo on Github and a textual prompt as the command, it will return a unified diff (as a string) representing the changes to be made, with the help of ChatGPT. 
+TinyGen is a simple coding assistant FastAPI API. After taking in a URL of a public repo on Github and a textual prompt as the command, it will return a unified diff (as a string) representing the changes to be made, with the help of a GPT model. 
 
 # How to use this API on the Web
 
@@ -15,7 +15,7 @@ To use it, send a POST request with a repoUrl (the URL of a public repo on Githu
 ```
 Alternatively, you can visit http://18.224.31.85:8000/docs on your browser, select the POST request, and select "Try it out" to test this API. 
 
-After some time the API will respond with the diff that accomplishes the specified task, or an error message if one occurred. The response may take a while as it relies on a ChatGPT LLM. 
+After some time the API will respond with the diff that accomplishes the specified task, or an error message if one occurred. The response may take a while as it relies on a GPT LLM. 
 
 # How to run it on your local machine
 
